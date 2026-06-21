@@ -66,6 +66,11 @@ chmod 775 "$WORK/tmp"
 # Based on the celyrin/cape-docker approach:
 # conf, storage, log are stored in /work and symlinked back
 
+if [ -d "${CAPE_ROOT}/conf/default" ] && [ ! -L "${CAPE_ROOT}/conf" ]; then
+    mkdir -p "${WORK}/conf/default"
+    cp -f "${CAPE_ROOT}/conf/default/"*.default "${WORK}/conf/default/" 2>/dev/null || true
+fi
+
 for dir in conf storage log; do
     SRC="${CAPE_ROOT}/${dir}"
     DST="${WORK}/${dir}"

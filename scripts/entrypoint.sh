@@ -1,129 +1,206 @@
-#!/bin/bash
+version: "3.9"
+
 # ============================================================
-# entrypoint.sh -- CAPE Sandbox container entrypoint
-# Based on celyrin/cape-docker, adapted for KVM/libvirt
+# CAPEv2 Docker Compose -- Multi-service architecture
+# Host requirements: Ubuntu 22.04/24.04 with KVM/libvirt installed
 # ============================================================
-set -e
 
-CAPE_ROOT="${CAPE_ROOT:-/opt/CAPEv2}"
-CAPE_USER="${CAPE_USER:-cape}"
-WORK="/work"
-POSTGRES_HOST="${POSTGRES_HOST:-postgresql}"
-POSTGRES_PORT="${POSTGRES_PORT:-5432}"
-POSTGRES_USER="${POSTGRES_USER:-cape}"
-POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-SuperPuperSecret}"
-POSTGRES_DB="${POSTGRES_DB:-cape}"
+x-common-env: &common-env
+  TZ: ${TZ:-UTC}
+  POSTGRES_HOST: ${POSTGRES_HOST:-postgresql}
+  POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+  POSTGRES_USER: ${POSTGRES_USER:-cape}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-SuperPuperSecret}
+  POSTGRES_DB: ${POSTGRES_DB:-cape}
+  MONGO_HOST: ${MONGO_HOST:-mongodb}
+  MONGO_PORT: ${MONGO_PORT:-27017}
+  MONGO_DB: ${MONGO_DB:-cape}
+  REDIS_HOST: ${REDIS_HOST:-redis}
+  REDIS_PORT: ${REDIS_PORT:-6379}
+  CAPE_AS_ROOT: "1"
 
-log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
+services:
 
-# -- 1. Verify libvirt socket --
-log "Checking libvirt socket..."
-LIBVIRT_SOCK="/var/run/libvirt/libvirt-sock"
-if [ ! -S "$LIBVIRT_SOCK" ]; then
-    log "ERROR: Libvirt socket not found: $LIBVIRT_SOCK"
-    log "Make sure libvirtd is running on the host and the socket volume is mounted."
-    exit 1
-fi
-log "Libvirt socket found: OK"
+  # ----------------------------------------------------------
+  # PostgreSQL -- Task database
+  # ----------------------------------------------------------
+  postgresql:
+    image: postgres:16-alpine
+    container_name: cape-postgresql
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cape}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-SuperPuperSecret}
+      POSTGRES_DB: ${POSTGRES_DB:-cape}
+      TZ: ${TZ:-UTC}
+    volumes:
+      - ${POSTGRES_DATA_DIR:-./data/postgresql}:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cape} -d ${POSTGRES_DB:-cape}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    ports:
+      - "127.0.0.1:5432:5432"
+    networks:
+      - cape-internal
 
-# Test libvirt connectivity
-if ! virsh -c qemu:///system list --all > /dev/null 2>&1; then
-    log "WARNING: Unable to connect to libvirt. Check socket permissions."
-fi
+  # ----------------------------------------------------------
+  # MongoDB -- Analysis results storage
+  # ----------------------------------------------------------
+  mongodb:
+    image: mongo:7.0
+    container_name: cape-mongodb
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-UTC}
+    command: ["--bind_ip_all", "--wiredTigerCacheSizeGB", "2"]
+    volumes:
+      - ${MONGO_DATA_DIR:-./data/mongodb}:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    ports:
+      - "127.0.0.1:27017:27017"
+    networks:
+      - cape-internal
 
-# -- 2. Wait for PostgreSQL --
-log "Waiting for PostgreSQL on ${POSTGRES_HOST}:${POSTGRES_PORT}..."
-MAX_RETRIES=30
-RETRIES=0
-until PGPASSWORD="${POSTGRES_PASSWORD}" pg_isready -h "${POSTGRES_HOST}" -p "${POSTGRES_PORT}" -U "${POSTGRES_USER}" > /dev/null 2>&1; do
-    RETRIES=$((RETRIES + 1))
-    if [ $RETRIES -ge $MAX_RETRIES ]; then
-        log "ERROR: PostgreSQL unavailable after ${MAX_RETRIES} attempts."
-        exit 1
-    fi
-    log "PostgreSQL not ready, retrying in 5s... ($RETRIES/$MAX_RETRIES)"
-    sleep 5
-done
-log "PostgreSQL ready: OK"
+  # ----------------------------------------------------------
+  # Redis -- Task queue
+  # ----------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: cape-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "127.0.0.1:6379:6379"
+    networks:
+      - cape-internal
 
-# Ensure the role and database exist
-PGPASSWORD="${POSTGRES_PASSWORD}" psql -h "${POSTGRES_HOST}" -U "${POSTGRES_USER}" -d postgres -c "SELECT 1" > /dev/null 2>&1 || true
+  # ----------------------------------------------------------
+  # Guacd -- Apache Guacamole proxy daemon for interactive desktop
+  # ----------------------------------------------------------
+  cape-guacd:
+    image: guacamole/guacd:latest
+    container_name: cape-guacd
+    restart: unless-stopped
+    network_mode: host
 
-# -- 3. Verify working directory --
-log "Checking working directory: $WORK"
-if [ ! -d "$WORK" ]; then
-    log "ERROR: /work directory not found. Check the Docker volume."
-    exit 1
-fi
-chown -R "${CAPE_USER}:${CAPE_USER}" "$WORK"
-mkdir -p "$WORK/tmp"
-chown -R cape:cape "$WORK/tmp"
-chmod 775 "$WORK/tmp"
+  # ----------------------------------------------------------
+  # CAPE Sandbox -- Core malware analysis engine
+  # Accesses KVM through the host libvirt socket
+  # ----------------------------------------------------------
+  cape-sandbox:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        CAPE_ROOT: /opt/CAPEv2
+    image: cape-sandbox:latest
+    container_name: cape-sandbox
+    restart: unless-stopped
+    privileged: true  # Required for tcpdump + libvirt access
+    environment:
+      <<: *common-env
+      POSTGRES_HOST: 127.0.0.1
+      MONGO_HOST: 127.0.0.1
+      REDIS_HOST: 127.0.0.1
+      CAPE_ROOT: ${CAPE_ROOT:-/opt/CAPEv2}
+      CAPE_USER: ${CAPE_USER:-cape}
+      CAPE_RESULTSERVER_IP: ${CAPE_RESULTSERVER_IP:-192.168.122.1}
+      CAPE_NETWORK_IFACE: ${CAPE_NETWORK_IFACE:-virbr1}
+      KVM_DSN: ${KVM_DSN:-qemu:///system}
+      VM1_LABEL: ${VM1_LABEL:-win10}
+      VM1_IP: ${VM1_IP:-192.168.122.105}
+      VM1_SNAPSHOT: ${VM1_SNAPSHOT:-cape-snapshot}
+      VM1_PLATFORM: ${VM1_PLATFORM:-windows}
+      VM1_ARCH: ${VM1_ARCH:-x64}
+      VM1_TAGS: ${VM1_TAGS:-win10}
+      CAPE_ADMIN_USER: ${CAPE_ADMIN_USER:-admin}
+      CAPE_ADMIN_PASSWORD: ${CAPE_ADMIN_PASSWORD:-CapeAdmin2026!}
+      CAPE_ADMIN_EMAIL: ${CAPE_ADMIN_EMAIL:-admin@cape.local}
+    volumes:
+      # Libvirt socket to control KVM VMs from inside the container
+      - /var/run/libvirt/libvirt-sock:/var/run/libvirt/libvirt-sock
+      - /var/run/libvirt/libvirt-sock-ro:/var/run/libvirt/libvirt-sock-ro
+      # Persistent CAPE data (conf, storage, logs)
+      - ${CAPE_WORK_DIR:-./data/cape}:/work
+      # Read-only access to KVM disk images for snapshots
+      - /var/lib/libvirt/images:/var/lib/libvirt/images:ro
+      # cgroups required for systemd inside the container
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    tmpfs:
+      - /run
+      - /run/lock
+    network_mode: host  # Required to sniff KVM VM network traffic
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+      - SYS_ADMIN
+      - SYS_NICE
+    security_opt:
+      - apparmor:unconfined
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
-# -- 4. Manage CAPE configuration (symlinks to /work) --
-# Based on the celyrin/cape-docker approach:
-# conf, storage, log are stored in /work and symlinked back
+  # ----------------------------------------------------------
+  # CAPE Web -- Django interface
+  # Uses host networking to access the sandbox
+  # ----------------------------------------------------------
+  cape-web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      args:
+        CAPE_ROOT: /opt/CAPEv2
+    image: cape-web:latest
+    container_name: cape-web
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      POSTGRES_HOST: 127.0.0.1
+      MONGO_HOST: 127.0.0.1
+      REDIS_HOST: 127.0.0.1
+      CAPE_ROOT: ${CAPE_ROOT:-/opt/CAPEv2}
+      CAPE_SECRET_KEY: ${CAPE_SECRET_KEY:-changeme}
+      CAPE_WEB_PORT: ${CAPE_WEB_PORT:-8000}
+    volumes:
+      - ${CAPE_WORK_DIR:-./data/cape}:/work
+      - ./templates/analysis/overview/_screenshots.html:/opt/CAPEv2/web/templates/analysis/overview/_screenshots.html
+      - ${CAPE_WORK_DIR:-./data/cape}/siteauth.sqlite:/opt/CAPEv2/web/siteauth.sqlite
+      - /var/run/libvirt/libvirt-sock:/var/run/libvirt/libvirt-sock
+      - /var/run/libvirt/libvirt-sock-ro:/var/run/libvirt/libvirt-sock-ro
+    network_mode: host
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
 
-for dir in conf storage log; do
-    SRC="${CAPE_ROOT}/${dir}"
-    DST="${WORK}/${dir}"
 
-    if [ -L "${SRC}" ]; then
-        log "CAPEv2 ${dir} is already a symlink: OK"
-    elif [ -d "${DST}" ]; then
-        log "Existing ${dir} found in /work, linking..."
-        rm -rf "${SRC}"
-        chown -R "${CAPE_USER}:${CAPE_USER}" "${DST}"
-        ln -s "${DST}" "${SRC}"
-    elif [ -d "${SRC}" ]; then
-        log "Moving ${dir} to /work and creating symlink..."
-        mv "${SRC}" "${DST}"
-        ln -s "${DST}" "${SRC}"
-        chown -R "${CAPE_USER}:${CAPE_USER}" "${DST}"
-    else
-        log "Creating ${dir} in /work..."
-        sudo -u "${CAPE_USER}" mkdir -p "${DST}"
-        ln -s "${DST}" "${SRC}"
-    fi
-done
+volumes:
+  redis-data:
 
-# -- 5. Automatic configuration via Python script --
-log "Configuring CAPE..."
-python3 /configure-cape.py
-chmod 666 "${WORK}/conf/kvm.conf" || true
-
-# -- 6. Initialize CAPE database --
-log "Initializing CAPE database..."
-cd "${CAPE_ROOT}"
-# Run schema creation synchronously to avoid race conditions between cuckoo and process
-sudo -u "${CAPE_USER}" python3 -c "import sys; sys.path.append('${CAPE_ROOT}'); from lib.cuckoo.core.database import init_database; init_database()" || log "Note: Synchronous DB init/migration skipped"
-sudo -u "${CAPE_USER}" python3 utils/db_migration.py 2>/dev/null || \
-    log "Note: DB migration skipped (may be normal on first startup)"
-
-# -- 7. Start CAPE services via systemd --
-log "Starting CAPE services..."
-
-# Enable and start cape-rooter (required for network rules)
-if systemctl is-enabled cape-rooter.service > /dev/null 2>&1; then
-    systemctl restart cape-rooter.service
-    log "cape-rooter.service started"
-else
-    log "Starting cape-rooter manually..."
-    python3 "${CAPE_ROOT}/utils/rooter.py" &
-    log "cape-rooter started in background (PID: $!)"
-fi
-
-# Start the processor in the background (required to handle analysis results)
-log "Starting CAPE processor..."
-python3 "${CAPE_ROOT}/utils/process.py" auto -p 2 &
-log "CAPE processor started in background (PID: $!)"
-
-log "============================================================"
-log "CAPE Sandbox is ready and starting in the foreground..."
-log "Results stored in: /work/storage"
-log "Logs available in: /work/log"
-log "============================================================"
-
-# Start the main CAPE service in the foreground (captures all logs via Docker)
-# Do not use sudo to preserve the global Python environment and libvirt-python access
-exec python3 "${CAPE_ROOT}/cuckoo.py"
+networks:
+  cape-internal:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24

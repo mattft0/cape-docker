@@ -131,6 +131,7 @@ services:
       CAPE_ADMIN_USER: ${CAPE_ADMIN_USER:-admin}
       CAPE_ADMIN_PASSWORD: ${CAPE_ADMIN_PASSWORD:-CapeAdmin2026!}
       CAPE_ADMIN_EMAIL: ${CAPE_ADMIN_EMAIL:-admin@cape.local}
+      CAPE_PROCESSING_TIMEOUT: ${CAPE_PROCESSING_TIMEOUT:-1800}
     volumes:
       # Libvirt socket to control KVM VMs from inside the container
       - /var/run/libvirt/libvirt-sock:/var/run/libvirt/libvirt-sock

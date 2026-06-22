@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================
 # setup-host.sh -- Prepare the Ubuntu host for CAPEv2 Docker
-# Run ONCE on the host server BEFORE docker-compose up
+# Run ONCE on the host server BEFORE docker compose up
 # ============================================================
 # Usage: sudo bash setup-host.sh
 # ============================================================
@@ -162,8 +162,8 @@ echo "4. Edit the .env file with your settings (VM, IPs, passwords):"
 echo "   nano .env"
 echo ""
 echo "5. Start CAPEv2:"
-echo "   docker-compose up -d --build"
-echo "   docker-compose logs -f cape-sandbox"
+echo "   docker compose up -d --build"
+echo "   docker compose logs -f cape-sandbox"
 echo ""
 echo "6. Access the interface:"
 echo "   http://SERVER_IP          (via Nginx)"

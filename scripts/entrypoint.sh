@@ -56,6 +56,8 @@ if [ ! -d "$WORK" ]; then
     exit 1
 fi
 chown -R "${CAPE_USER}:${CAPE_USER}" "$WORK"
+mkdir -p "${WORK}/static"
+chown "${CAPE_USER}:${CAPE_USER}" "${WORK}/static"
 chmod 2775 "${WORK}/storage" 2>/dev/null || true
 chmod 2775 "${WORK}/storage/analyses" 2>/dev/null || true
 mkdir -p "$WORK/tmp"
@@ -233,7 +235,7 @@ done) &
 
 # Start the processor in the background (required to handle analysis results)
 log "Starting CAPE processor..."
-python3 "${CAPE_ROOT}/utils/process.py" auto -p 2 &
+python3 "${CAPE_ROOT}/utils/process.py" auto -p 1 &
 log "CAPE processor started in background (PID: $!)"
 
 log "============================================================"

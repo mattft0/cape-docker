@@ -83,6 +83,9 @@ ALLOWED_HOSTS = ["*"]
 EOF
 fi
 
+mkdir -p /work/static 2>/dev/null || true
+chmod 755 /work/static 2>/dev/null || true
+
 # -- 4.5 Inject WhiteNoise (static file serving) --
 log "Injecting WhiteNoise for static file support..."
 python3 -c "

@@ -209,7 +209,7 @@ if __name__ == "__main__":
                 log(f"Copied template: {default_file.name} -> {target.name}")
 
     configure_cuckoo()
-    # configure_kvm()  # Disabled to allow fully manual VM management in kvm.conf
+    configure_kvm()
     configure_reporting()
     configure_web()
     configure_auxiliary()

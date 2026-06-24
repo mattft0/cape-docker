@@ -16,7 +16,6 @@ CONF_DIR = Path(CAPE_ROOT) / "conf"
 def log(msg):
     print(f"[configure-cape] {msg}")
 
-
 def load_conf(filename):
     """Load an INI config file with case preservation."""
     config = configparser.RawConfigParser()
@@ -153,6 +152,12 @@ def configure_reporting():
     config.set("jsondump", "enabled", "yes")
     config.set("jsondump", "indent", "4")
 
+    # Enable HTML and PDF reports
+    for section in ["reporthtml", "reporthtmlsummary", "reportpdf"]:
+        if not config.has_section(section):
+            config.add_section(section)
+        config.set(section, "enabled", "yes")
+
     save_conf(config, path)
 
 
@@ -175,6 +180,16 @@ def configure_web():
     config.set("mongodb", "host", mongo_host)
     config.set("mongodb", "port", mongo_port)
     config.set("mongodb", "db", mongo_db)
+
+    # Enable URL analysis option
+    if not config.has_section("url_analysis"):
+        config.add_section("url_analysis")
+    config.set("url_analysis", "enabled", "yes")
+
+    # Enable download and execute option
+    if not config.has_section("dlnexec"):
+        config.add_section("dlnexec")
+    config.set("dlnexec", "enabled", "yes")
 
     save_conf(config, path)
 

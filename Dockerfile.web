@@ -80,51 +80,10 @@ RUN mkdir -p /work && chown -R cape:cape /work ${CAPE_ROOT}
 COPY scripts/entrypoint-web.sh /entrypoint-web.sh
 RUN chmod +x /entrypoint-web.sh
 
-# Patch settings.py: make init_rooter() and init_routing() non-fatal in cape-web
-RUN python3 << 'PYEOF'
-path = '/opt/CAPEv2/web/web/settings.py'
-with open(path) as f:
-    content = f.read()
-old1 = 'init_rooter()'
-new1 = 'try:\n    init_rooter()\nexcept Exception:\n    pass'
-if old1 in content:
-    content = content.replace(old1, new1, 1)
-    print('init_rooter patch applied')
-old2 = 'init_routing()'
-new2 = 'try:\n    init_routing()\nexcept Exception:\n    pass'
-if old2 in content:
-    content = content.replace(old2, new2, 1)
-    print('init_routing patch applied')
-with open(path, 'w') as f:
-    f.write(content)
-PYEOF
+# Apply patches to CAPEv2 web settings and startup routines (no heredocs for compatibility)
+COPY scripts/patch_web.py /tmp/patch_web.py
+RUN python3 /tmp/patch_web.py && rm /tmp/patch_web.py
 
-# Patch startup.py: make rt_available check non-fatal so vpns dict is populated
-# Patch startup.py: disable init_rooter() and init_routing() entirely in cape-web
-RUN python3 << 'PYEOF'
-path = '/opt/CAPEv2/lib/cuckoo/core/startup.py'
-with open(path) as f:
-    content = f.read()
-
-old1 = 'def init_rooter():'
-new1 = 'def init_rooter(): return  # Disabled in Docker\ndef _init_rooter_disabled():'
-if old1 in content:
-    content = content.replace(old1, new1, 1)
-    print('init_rooter disabled patch applied')
-else:
-    print('WARNING: init_rooter pattern not found')
-
-old2 = 'def init_routing():'
-new2 = 'def init_routing(): return  # Disabled in Docker\ndef _init_routing_disabled():'
-if old2 in content:
-    content = content.replace(old2, new2, 1)
-    print('init_routing disabled patch applied')
-else:
-    print('WARNING: init_routing pattern not found')
-
-with open(path, 'w') as f:
-    f.write(content)
-PYEOF
 
 VOLUME ["/work"]
 

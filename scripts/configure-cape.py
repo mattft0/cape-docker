@@ -192,6 +192,21 @@ def configure_web():
         config.add_section("dlnexec")
     config.set("dlnexec", "enabled", "yes")
 
+    # Enable web authentication
+    if not config.has_section("web_auth"):
+        config.add_section("web_auth")
+    config.set("web_auth", "enabled", "yes")
+    config.set("web_auth", "captcha", "no")
+    config.set("web_auth", "2fa", "no")
+
+    # Disable registration restrictions
+    if not config.has_section("registration"):
+        config.add_section("registration")
+    config.set("registration", "enabled", "no")
+    config.set("registration", "manual_approve", "no")
+    config.set("registration", "email_required", "no")
+    config.set("registration", "email_confirmation", "no")
+
     save_conf(config, path)
 
 

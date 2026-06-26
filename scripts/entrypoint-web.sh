@@ -108,6 +108,18 @@ if 'STATICFILES_STORAGE' not in content:
 with open(settings_path, 'w') as f:
     f.write(content)
 "
+# Wait for cape-rooter socket before Django startup
+log "Waiting for cape-rooter socket from cape-sandbox..."
+RETRIES=0
+while [ ! -S "/work/cuckoo-rooter" ] && [ $RETRIES -lt 60 ]; do
+    sleep 2
+    RETRIES=$((RETRIES + 1))
+done
+if [ -S "/work/cuckoo-rooter" ]; then
+    log "cape-rooter socket ready: OK"
+else
+    log "WARNING: cape-rooter socket not found after 120s"
+fi
 
 # Django migrations
 log "Running Django migrations..."

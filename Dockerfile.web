@@ -80,6 +80,39 @@ RUN mkdir -p /work && chown -R cape:cape /work ${CAPE_ROOT}
 COPY scripts/entrypoint-web.sh /entrypoint-web.sh
 RUN chmod +x /entrypoint-web.sh
 
+# Patch settings.py: make init_rooter() and init_routing() non-fatal in cape-web
+RUN python3 << 'PYEOF'
+path = '/opt/CAPEv2/web/web/settings.py'
+with open(path) as f:
+    content = f.read()
+old1 = 'init_rooter()'
+new1 = 'try:\n    init_rooter()\nexcept Exception:\n    pass'
+if old1 in content:
+    content = content.replace(old1, new1, 1)
+    print('init_rooter patch applied')
+old2 = 'init_routing()'
+new2 = 'try:\n    init_routing()\nexcept Exception:\n    pass'
+if old2 in content:
+    content = content.replace(old2, new2, 1)
+    print('init_routing patch applied')
+with open(path, 'w') as f:
+    f.write(content)
+PYEOF
+
+# Patch startup.py: make rt_available check non-fatal so vpns dict is populated
+RUN python3 << 'PYEOF'
+path = '/opt/CAPEv2/lib/cuckoo/core/startup.py'
+with open(path) as f:
+    content = f.read()
+old = '                is_rt_available = rooter("rt_available", entry.rt_table)["output"]\n                if not is_rt_available:'
+new = '                try:\n                    is_rt_available = rooter("rt_available", entry.rt_table)["output"]\n                except Exception:\n                    is_rt_available = True\n                if not is_rt_available:'
+if old in content:
+    content = content.replace(old, new, 1)
+    print('startup rt_available patch applied')
+with open(path, 'w') as f:
+    f.write(content)
+PYEOF
+
 VOLUME ["/work"]
 
 WORKDIR ${CAPE_ROOT}/web

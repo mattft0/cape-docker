@@ -100,6 +100,10 @@ RUN git clone --depth=1 https://github.com/kevoreilly/CAPEv2.git ${CAPE_ROOT} &&
     sed -i 's/pyopenssl>=.*/pyopenssl<26/g' ${CAPE_ROOT}/requirements.txt || true && \
     sed -i 's/pyopenssl==.*/pyopenssl<26/g' ${CAPE_ROOT}/requirements.txt || true
 
+# -- Patch rooter.py --
+COPY scripts/patch_rooter.py /tmp/patch_rooter.py
+RUN python3 /tmp/patch_rooter.py && rm /tmp/patch_rooter.py
+
 # -- Install CAPE Python dependencies --
 WORKDIR ${CAPE_ROOT}
 

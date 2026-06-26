@@ -118,8 +118,23 @@ if systemctl is-enabled cape-rooter.service > /dev/null 2>&1; then
     log "cape-rooter.service started"
 else
     log "Starting cape-rooter manually..."
-    python3 "${CAPE_ROOT}/utils/rooter.py" &
+    #python3 "${CAPE_ROOT}/utils/rooter.py" &
+    python3 "${CAPE_ROOT}/utils/rooter.py" /work/cuckoo-rooter &
     log "cape-rooter started in background (PID: $!)"
+fi
+
+# Attendre que le socket rooter soit créé avant de démarrer cuckoo.py
+log "Waiting for cape-rooter socket..."
+RETRIES=0
+while [ ! -S "/work/cuckoo-rooter" ] && [ $RETRIES -lt 30 ]; do
+    sleep 1
+    RETRIES=$((RETRIES + 1))
+done
+if [ -S "/work/cuckoo-rooter" ]; then
+    chmod 666 /work/cuckoo-rooter
+    log "cape-rooter socket ready: OK"
+else
+    log "WARNING: cape-rooter socket not found after 30s, continuing anyway"
 fi
 
 # User accounts persistence (siteauth.sqlite stored in /work)

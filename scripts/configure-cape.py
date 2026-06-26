@@ -44,6 +44,7 @@ def configure_cuckoo():
     # Virtualization engine and shared temp directory
     config.set("cuckoo", "machinery", "kvm")
     config.set("cuckoo", "tmppath", "/work/tmp")
+    config.set("cuckoo", "rooter", "/work/cuckoo-rooter")
 
     # ResultServer address (KVM bridge IP as seen by VMs)
     resultserver_ip = os.environ.get("CAPE_RESULTSERVER_IP", "192.168.122.1")
@@ -207,6 +208,43 @@ def configure_auxiliary():
 
     save_conf(config, path)
 
+# -- routing.conf --
+def configure_routing():
+    log("Configuring routing.conf...")
+    config, path = load_conf("routing.conf")
+
+    iface = os.environ.get("CAPE_NETWORK_IFACE", "virbr0")
+
+    if not config.has_section("routing"):
+        config.add_section("routing")
+    config.set("routing", "route", "internet")
+    config.set("routing", "internet", iface)
+    config.set("routing", "drop", "yes")
+    config.set("routing", "nat", "yes")
+    config.set("routing", "no_local_routing", "yes")
+    config.set("routing", "rt_table", "main")
+    config.set("routing", "auto_rt", "no")
+    config.set("routing", "verify_interface", "yes")
+    config.set("routing", "verify_rt_table", "no")
+    config.set("routing", "enable_pcap", "yes")
+
+    if not config.has_section("inetsim"):
+        config.add_section("inetsim")
+    config.set("inetsim", "enabled", "no")
+    config.set("inetsim", "interface", iface)
+
+    if not config.has_section("tor"):
+        config.add_section("tor")
+    config.set("tor", "enabled", "no")
+    config.set("tor", "dnsport", "5353")
+    config.set("tor", "proxyport", "9040")
+    config.set("tor", "interface", iface)
+
+    if not config.has_section("vpn"):
+        config.add_section("vpn")
+    config.set("vpn", "enabled", "no")
+
+    save_conf(config, path)
 
 if __name__ == "__main__":
     log("=== Starting automatic CAPE configuration ===")
@@ -225,6 +263,7 @@ if __name__ == "__main__":
 
     configure_cuckoo()
     configure_kvm()
+    configure_routing()
     configure_reporting()
     configure_web()
     configure_auxiliary()

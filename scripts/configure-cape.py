@@ -246,6 +246,22 @@ def configure_routing():
 
     save_conf(config, path)
 
+# -- api.conf --
+def configure_api():
+    log("Configuring api.conf...")
+    config, path = load_conf("api.conf")
+
+    if not config.has_section("machinelist"):
+        config.add_section("machinelist")
+    config.set("machinelist", "enabled", "yes")
+
+    if not config.has_section("machineview"):
+        config.add_section("machineview")
+    config.set("machineview", "enabled", "yes")
+
+    save_conf(config, path)
+
+
 if __name__ == "__main__":
     log("=== Starting automatic CAPE configuration ===")
 
@@ -267,5 +283,6 @@ if __name__ == "__main__":
     configure_reporting()
     configure_web()
     configure_auxiliary()
+    configure_api()
 
     log("=== CAPE configuration complete ===")

@@ -101,6 +101,15 @@ log "Configuring CAPE..."
 python3 /configure-cape.py
 chmod 666 "${WORK}/conf/kvm.conf" || true
 
+# Force-enable key API endpoints (sed is more reliable than configparser on files with special values)
+API_CONF="${WORK}/conf/api.conf"
+if [ -f "$API_CONF" ]; then
+    for section in machinelist machineview cuckoostatus taskstatus tasklist; do
+        sed -i "/^\[${section}\]/,/^\[/{s/^enabled = no$/enabled = yes/}" "$API_CONF"
+    done
+    log "API endpoints enabled in api.conf: OK"
+fi
+
 # -- 6. Initialize CAPE database --
 log "Initializing CAPE database..."
 cd "${CAPE_ROOT}"

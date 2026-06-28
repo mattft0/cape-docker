@@ -169,6 +169,20 @@ log "User account persistence: OK"
 log "Installing additional Python dependencies..."
 pip3 install "ImageHash>=4.3.1" --quiet --break-system-packages 2>/dev/null || true
 
+# Community YARA rules + MITRE ATT&CK (skip if already done in /work)
+COMMUNITY_FLAG="${WORK}/.community_installed"
+if [ ! -f "$COMMUNITY_FLAG" ]; then
+    log "Installing community signatures (MITRE ATT&CK, YARA)..."
+    cd "${CAPE_ROOT}"
+    # Use system python3 as dependencies are installed globally in the container
+    sudo -u "${CAPE_USER}" python3 utils/community.py -waf --mitre 2>/dev/null && \
+    sudo -u "${CAPE_USER}" python3 utils/community.py -cr 2>/dev/null && \
+    touch "$COMMUNITY_FLAG" && \
+    log "Community signatures installed: OK"
+else
+    log "Community signatures already installed: OK"
+fi
+
 # Volatility3 symbols and patches
 log "Setting up Volatility3..."
 VOL_SYMBOLS=$(python3 -c "import volatility3; print(volatility3.__file__.replace('__init__.py', 'symbols/'))" 2>/dev/null)
@@ -238,6 +252,10 @@ else
     log "Volatility3 BitField patch already applied: OK"
 fi
 
+# Patch SHOT_DELAY for better screenshots
+log "Patching SHOT_DELAY in screenshots.py..."
+sed -i 's/SHOT_DELAY = 1/SHOT_DELAY = 5/' "${CAPE_ROOT}/analyzer/windows/modules/auxiliary/screenshots.py" || log "Failed to patch SHOT_DELAY"
+
 # Start Daphne WebSocket server for Guacamole
 log "Starting Daphne WebSocket server for Guacamole..."
 cd "${CAPE_ROOT}/web"
@@ -253,7 +271,8 @@ setfacl -R -d -m u:cape:rwX "${WORK}/storage" 2>/dev/null || true
 # Background ACL fix for analysis deletion from web UI
 log "Starting background ACL fix for storage permissions..."
 (while true; do
-    setfacl -R -m u:cape:rwX,m::rwX "${WORK}/storage/analyses/" 2>/dev/null
+    setfacl -R -m u:cape:rwX,m::rwX "${WORK}/storage/" 2>/dev/null
+    chmod -R 775 "${WORK}/storage/" 2>/dev/null
     sleep 30
 done) &
 

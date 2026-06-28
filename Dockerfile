@@ -134,7 +134,16 @@ RUN pip3 install \
     oletools \
     volatility3 \
     orjson \
-    gunicorn
+    gunicorn \
+    pydantic \
+    pyattck-data \
+    pendulum \
+    fire \
+    "ImageHash>=4.3.1" \
+    git+https://github.com/CAPESandbox/httpreplay
+
+# Downgrade pydantic for volatility3 compatibility if needed
+RUN pip3 install "pydantic<2.0.0"
 
 # -- Configure directories --
 RUN mkdir -p \

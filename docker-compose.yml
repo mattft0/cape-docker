@@ -121,6 +121,8 @@ services:
       CAPE_USER: ${CAPE_USER:-cape}
       CAPE_RESULTSERVER_IP: ${CAPE_RESULTSERVER_IP:-192.168.122.1}
       CAPE_NETWORK_IFACE: ${CAPE_NETWORK_IFACE:-virbr1}
+      CAPE_DEFAULT_ROUTE: ${CAPE_DEFAULT_ROUTE:-none}
+      CAPE_INTERNET_IFACE: ${CAPE_INTERNET_IFACE:-}
       KVM_DSN: ${KVM_DSN:-qemu:///system}
       VM1_LABEL: ${VM1_LABEL:-win10}
       VM1_IP: ${VM1_IP:-192.168.122.105}
@@ -132,6 +134,7 @@ services:
       CAPE_ADMIN_PASSWORD: ${CAPE_ADMIN_PASSWORD:-CapeAdmin2026!}
       CAPE_ADMIN_EMAIL: ${CAPE_ADMIN_EMAIL:-admin@cape.local}
       CAPE_PROCESSING_TIMEOUT: ${CAPE_PROCESSING_TIMEOUT:-1800}
+      VIRUSTOTAL_API_KEY: ${VIRUSTOTAL_API_KEY:-}
     volumes:
       # Libvirt socket to control KVM VMs from inside the container
       - /var/run/libvirt/libvirt-sock:/var/run/libvirt/libvirt-sock

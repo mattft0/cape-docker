@@ -60,11 +60,12 @@ log "Configuring web interface..."
 cd "${CAPE_ROOT}/web"
 
 # Create local settings file if it does not exist
-if [ ! -f "${CAPE_ROOT}/web/web/local_settings.py" ]; then
-    cat > "${CAPE_ROOT}/web/web/local_settings.py" << EOF
-# Auto-generated local configuration
-import os
+LOCAL_SETTINGS="${CAPE_ROOT}/web/web/local_settings.py"
+if ! grep -q "postgresql" "${LOCAL_SETTINGS}" 2>/dev/null; then
+    log "Injecting PostgreSQL DATABASES into local_settings.py..."
+    cat >> "${LOCAL_SETTINGS}" << EOF
 
+# Auto-injected by entrypoint
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql_psycopg2",
@@ -75,11 +76,6 @@ DATABASES = {
         "PORT": "${POSTGRES_PORT}",
     }
 }
-
-MONGO_URI = "mongodb://${MONGO_HOST}:${MONGO_PORT}"
-SECRET_KEY = "${CAPE_SECRET_KEY:-$(python3 -c 'import secrets; print(secrets.token_hex(32))')}"
-DEBUG = False
-ALLOWED_HOSTS = ["*"]
 EOF
 fi
 

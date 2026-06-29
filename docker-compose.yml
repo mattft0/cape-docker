@@ -1,5 +1,3 @@
-version: "3.9"
-
 # ============================================================
 # CAPEv2 Docker Compose -- Multi-service architecture
 # Host requirements: Ubuntu 22.04/24.04 with KVM/libvirt installed
@@ -185,6 +183,8 @@ services:
       CAPE_ROOT: ${CAPE_ROOT:-/opt/CAPEv2}
       CAPE_SECRET_KEY: ${CAPE_SECRET_KEY:-changeme}
       CAPE_WEB_PORT: ${CAPE_WEB_PORT:-8000}
+      GUNICORN_WORKERS: 4
+      GUNICORN_THREADS: 4
     volumes:
       - ${CAPE_WORK_DIR:-./data/cape}:/work
       - ./templates/analysis/overview/_screenshots.html:/opt/CAPEv2/web/templates/analysis/overview/_screenshots.html

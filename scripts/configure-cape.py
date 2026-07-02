@@ -189,6 +189,12 @@ def configure_processing():
             config.add_section("virustotal")
         config.set("virustotal", "enabled", "no")
 
+    # Core behavioral analysis modules — must be explicitly enabled
+    for section in ["behavior", "cape", "strings", "mitre"]:
+        if not config.has_section(section):
+            config.add_section(section)
+        config.set(section, "enabled", "yes")
+
     # Screenshot deduplication (requires ImageHash, installed in entrypoint.sh)
     if not config.has_section("deduplication"):
         config.add_section("deduplication")

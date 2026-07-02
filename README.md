@@ -14,6 +14,7 @@ Host (Ubuntu 22.04/24.04)
 |-- docker-compose
 |   |-- cape-sandbox    (analysis engine, --net=host)
 |   |-- cape-web        (Django UI, port 8000)
+|   |-- cape-guacd      (Guacamole daemon, live VNC view of the analysis VM)
 |   |-- postgresql      (task database)
 |   |-- mongodb         (results storage)
 |   +-- redis           (task queue)
@@ -22,6 +23,8 @@ Host (Ubuntu 22.04/24.04)
     +-- Windows VM (virbr1, isolated network)
         +-- CAPE agent --> ResultServer (port 2042)
 ```
+
+`cape-guacd` (`guacamole/guacd`) backs the web UI's live VM view: it's the protocol daemon that translates the analysis VM's VNC feed for display in the browser during a running analysis. It runs with `network_mode: host` and exposes no port of its own.
 
 ### Key differences from celyrin/cape-docker
 
@@ -67,6 +70,8 @@ Edit `.env` and set at minimum:
 | `VM1_LABEL` | libvirt VM name |
 | `VM1_IP` | Static IP of the analysis VM |
 | `VM1_SNAPSHOT` | Snapshot to restore before each analysis |
+| `CAPE_NETWORK_IFACE` | Host bridge interface used for the analysis network (default: `virbr1`) |
+| `CAPE_INTERNET_IFACE` | Host interface used if `CAPE_DEFAULT_ROUTE=internet`; leave unset to keep VMs isolated |
 
 ### 3. Prepare the Windows VM
 
@@ -112,11 +117,17 @@ http://<host-ip>:8000
 |   |-- entrypoint.sh         # Sandbox container init
 |   |-- entrypoint-web.sh     # Web container init
 |   |-- configure-cape.py     # Generates CAPE configs from env vars
-|   +-- prepare-vm.py         # VM setup helper
+|   |-- prepare-vm.py         # VM setup helper
+|   |-- patch_web.py          # Build-time patch: makes init_rooter()/init_routing() non-fatal in cape-web
+|   +-- patch_rooter.py       # Build-time patch: wraps rooter.py's sendto() in try/except
 |-- nginx/
 |   +-- cape.conf             # Nginx reverse proxy config
+|-- templates/
+|   +-- analysis/overview/_screenshots.html   # Custom override of the CAPE web screenshots view
 +-- data/                     # Persistent volumes (gitignored)
 ```
+
+`patch_web.py` and `patch_rooter.py` are applied at image build time (see `Dockerfile.web` / `Dockerfile`). Stock CAPEv2 assumes a single bare-metal install where the rooter is always reachable; split across containers, `cape-web`'s `init_rooter()`/`init_routing()` and `rooter.py`'s `sendto()` can throw depending on which container finishes starting first. These patches make those calls non-fatal so the stack comes up cleanly regardless of container start order.
 
 ## Usage
 
@@ -180,3 +191,4 @@ The configuration script picks them up automatically at container startup.
 ## License
 
 This project is provided as-is for research and educational purposes.
+

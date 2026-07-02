@@ -110,6 +110,8 @@ services:
     container_name: cape-sandbox
     restart: unless-stopped
     privileged: true  # Required for tcpdump + libvirt access
+    env_file:
+	- .env
     environment:
       <<: *common-env
       POSTGRES_HOST: 127.0.0.1
@@ -122,12 +124,6 @@ services:
       CAPE_DEFAULT_ROUTE: ${CAPE_DEFAULT_ROUTE:-none}
       CAPE_INTERNET_IFACE: ${CAPE_INTERNET_IFACE:-}
       KVM_DSN: ${KVM_DSN:-qemu:///system}
-      VM1_LABEL: ${VM1_LABEL:-win10}
-      VM1_IP: ${VM1_IP:-192.168.122.105}
-      VM1_SNAPSHOT: ${VM1_SNAPSHOT:-cape-snapshot}
-      VM1_PLATFORM: ${VM1_PLATFORM:-windows}
-      VM1_ARCH: ${VM1_ARCH:-x64}
-      VM1_TAGS: ${VM1_TAGS:-win10}
       CAPE_ADMIN_USER: ${CAPE_ADMIN_USER:-admin}
       CAPE_ADMIN_PASSWORD: ${CAPE_ADMIN_PASSWORD:-CapeAdmin2026!}
       CAPE_ADMIN_EMAIL: ${CAPE_ADMIN_EMAIL:-admin@cape.local}

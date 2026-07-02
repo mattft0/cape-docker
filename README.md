@@ -11,7 +11,7 @@ This project containerizes the CAPEv2 malware analysis sandbox while keeping KVM
 ```
 Host (Ubuntu 22.04/24.04)
 |
-|-- docker-compose
+|-- docker compose
 |   |-- cape-sandbox    (analysis engine, --net=host)
 |   |-- cape-web        (Django UI, port 8000)
 |   |-- cape-guacd      (Guacamole daemon, live VNC view of the analysis VM)
@@ -39,7 +39,7 @@ Host (Ubuntu 22.04/24.04)
 ## Prerequisites
 
 - Ubuntu 22.04 or 24.04 LTS (bare-metal or nested-virt capable VM)
-- Docker Engine + docker-compose v2
+- Docker Engine + docker compose v2
 - A Windows ISO (Win7 SP1 / Win10 / Win11)
 
 KVM, QEMU, and libvirt are installed automatically by `setup-host.sh`.
@@ -95,7 +95,7 @@ The VM must have:
 ### 4. Build and start
 
 ```bash
-docker-compose up -d --build
+docker compose up -d --build
 ```
 
 ### 5. Access the web interface
@@ -133,20 +133,20 @@ http://<host-ip>:8000
 
 ```bash
 # Submit a sample
-docker-compose exec cape-sandbox python3 utils/submit.py /path/to/sample.exe
+docker compose exec cape-sandbox python3 utils/submit.py /path/to/sample.exe
 
 # View logs
-docker-compose logs -f cape-sandbox
-docker-compose logs -f cape-web
+docker compose logs -f cape-sandbox
+docker compose logs -f cape-web
 
 # Access sandbox shell
-docker-compose exec cape-sandbox bash
+docker compose exec cape-sandbox bash
 
 # List VMs from inside the container
-docker-compose exec cape-sandbox virsh -c qemu:///system list --all
+docker compose exec cape-sandbox virsh -c qemu:///system list --all
 
 # Rebuild after changes
-docker-compose down && docker-compose up -d --build
+docker compose down && docker compose up -d --build
 ```
 
 ## Multi-VM Support
@@ -172,7 +172,7 @@ The configuration script picks them up automatically at container startup.
 | VM not responding to ping | Check `virsh list --all` and `virsh start <vm>` |
 | CAPE agent unreachable | Verify agent.py is running + firewall is off in the VM |
 | Permission denied on libvirt | `sudo usermod -aG libvirt $USER && newgrp libvirt` |
-| Database connection refused | Wait for healthchecks or check `docker-compose ps` |
+| Database connection refused | Wait for healthchecks or check `docker compose ps` |
 
 ## Security Considerations
 

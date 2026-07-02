@@ -151,8 +151,8 @@ def print_vm_setup_instructions():
 
 6. START CAPE
    -----------
-   docker-compose up -d
-   docker-compose logs -f cape-sandbox
+   docker compose up -d
+   docker compose logs -f cape-sandbox
 
 ================================================================
 """)

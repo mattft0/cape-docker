@@ -200,6 +200,11 @@ def configure_processing():
         config.add_section("deduplication")
     config.set("deduplication", "enabled", "yes")
 
+    # Static analysis activation
+    if not config.has_section("static"):
+        config.add_section("static")
+    config.set("static", "enabled", "yes")
+
     save_conf(config, path)
 
 
@@ -248,6 +253,10 @@ def configure_web():
     config.set("registration", "manual_approve",       "no")
     config.set("registration", "email_required",       "no")
     config.set("registration", "email_confirmation",   "no")
+
+    if not config.has_section("linux"):
+        config.add_section("linux")
+    config.set("linux", "enabled", "yes")
 
     save_conf(config, path)
 

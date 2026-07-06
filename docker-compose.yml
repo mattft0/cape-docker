@@ -111,7 +111,7 @@ services:
     restart: unless-stopped
     privileged: true  # Required for tcpdump + libvirt access
     env_file:
-	- .env
+    - .env
     environment:
       <<: *common-env
       POSTGRES_HOST: 127.0.0.1
@@ -135,6 +135,9 @@ services:
       - /var/run/libvirt/libvirt-sock-ro:/var/run/libvirt/libvirt-sock-ro
       # Persistent CAPE data (conf, storage, logs)
       - ${CAPE_WORK_DIR:-./data/cape}:/work
+      # Persistent YARA rules (community-synced + custom), survives rebuilds
+      - ${CAPE_YARA_RULES_DIR:-./data/yara-rules}:/opt/CAPEv2/data/yara
+      - ${CAPE_YARA_CUSTOM_DIR:-./data/yara-custom}:/opt/CAPEv2/custom/yara
       # Read-only access to KVM disk images for snapshots
       - /var/lib/libvirt/images:/var/lib/libvirt/images:ro
       # cgroups required for systemd inside the container

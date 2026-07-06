@@ -73,6 +73,13 @@ RUN apt-get update && apt-get install -y \
     # ssdeep
     libfuzzy-dev \
     python3-ssdeep \
+    # Weasyprint (PDF report generation)
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libgdk-pixbuf2.0-0 \
+    libcairo2 \
+    shared-mime-info \
+    fonts-liberation \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # -- Python alternatives --
@@ -140,6 +147,8 @@ RUN pip3 install \
     pendulum \
     fire \
     "ImageHash>=4.3.1" \
+    weasyprint \
+    "Twisted<23" \
     git+https://github.com/CAPESandbox/httpreplay
 
 # Downgrade pydantic for volatility3 compatibility if needed

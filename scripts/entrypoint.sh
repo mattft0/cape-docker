@@ -256,13 +256,6 @@ fi
 log "Patching SHOT_DELAY in screenshots.py..."
 sed -i 's/SHOT_DELAY = 1/SHOT_DELAY = 5/' "${CAPE_ROOT}/analyzer/windows/modules/auxiliary/screenshots.py" || log "Failed to patch SHOT_DELAY"
 
-# Start Daphne WebSocket server for Guacamole
-log "Starting Daphne WebSocket server for Guacamole..."
-cd "${CAPE_ROOT}/web"
-python3 -m daphne -b 0.0.0.0 -p 8008 web.asgi:application &
-log "Daphne started on port 8008 (PID: $!)"
-cd "${CAPE_ROOT}"
-
 # Fix permissions for analysis deletion from web UI using POSIX ACLs
 log "Setting up POSIX ACLs for storage permissions..."
 setfacl -R -m u:cape:rwX "${WORK}/storage" 2>/dev/null || true

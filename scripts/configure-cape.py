@@ -324,6 +324,24 @@ def configure_routing():
 
     save_conf(config, path)
 
+# -- web.conf (Guacamole) --
+def configure_guacamole():
+    log("Configuring web.conf [guacamole]...")
+    config, path = load_conf("web.conf")
+
+    if not config.has_section("guacamole"):
+        config.add_section("guacamole")
+    config.set("guacamole", "enabled", "yes")
+    config.set("guacamole", "mode", "vnc")
+    config.set("guacamole", "guacd_host", "localhost")
+    config.set("guacamole", "guacd_port", "4822")
+    config.set("guacamole", "vnc_host", "127.0.0.1")
+    config.set("guacamole", "guest_protocol", "vnc")
+    config.set("guacamole", "guacd_recording_path", "/work/storage/guacrecordings")
+    config.set("guacamole", "guest_width", "1280")
+    config.set("guacamole", "guest_height", "1024")
+
+    save_conf(config, path)
 
 # -- api.conf --
 def configure_api():
@@ -361,6 +379,7 @@ if __name__ == "__main__":
     configure_reporting()
     configure_processing()
     configure_web()
+    configure_guacamole()
     configure_auxiliary()
     configure_api()
 

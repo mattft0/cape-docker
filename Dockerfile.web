@@ -48,7 +48,9 @@ RUN git clone --depth=1 https://github.com/kevoreilly/CAPEv2.git ${CAPE_ROOT} &&
     sed -i 's/pyopenssl==.*/pyopenssl<26/g' ${CAPE_ROOT}/requirements.txt || true
 
 # Patch libvirt connection to read-only mode in web interface to avoid permission issues
-RUN sed -i 's/conn = libvirt.open(machinery_dsn)/conn = libvirt.openReadOnly(machinery_dsn)/' ${CAPE_ROOT}/web/guac/views.py
+# Both views.py and consumers.py use libvirt.open() but cape-web runs as non-root user "cape"
+RUN sed -i 's/conn = libvirt.open(machinery_dsn)/conn = libvirt.openReadOnly(machinery_dsn)/' ${CAPE_ROOT}/web/guac/views.py && \
+    sed -i 's/conn = libvirt.open(machinery_dsn)/conn = libvirt.openReadOnly(machinery_dsn)/' ${CAPE_ROOT}/web/guac/consumers.py
 
 # Patch STATIC_ROOT to use persistent volume path
 RUN sed -i "s|STATIC_ROOT = .*|STATIC_ROOT = '/work/static'|" ${CAPE_ROOT}/web/web/settings.py

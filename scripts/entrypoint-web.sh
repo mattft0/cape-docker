@@ -124,9 +124,14 @@ python3 manage.py migrate --noinput 2>/dev/null || log "Migrations skipped"
 # Collect static files
 python3 manage.py collectstatic --noinput || log "collectstatic skipped"
 
-# -- 5. Start Gunicorn --
-log "Starting Gunicorn on port ${CAPE_WEB_PORT}..."
+# -- 5. Guacamole recording directory --
+mkdir -p /work/storage/guacrecordings
+
+# -- 6. Start Gunicorn (ASGI mode for WebSocket support) --
+log "Starting Gunicorn (ASGI/uvicorn) on port ${CAPE_WEB_PORT}..."
 log "Web interface available at: http://0.0.0.0:${CAPE_WEB_PORT}"
+
+export DJANGO_SETTINGS_MODULE=web.settings
 
 exec gunicorn \
     --bind "0.0.0.0:${CAPE_WEB_PORT}" \
@@ -135,4 +140,5 @@ exec gunicorn \
     --access-logfile - \
     --error-logfile - \
     --log-level info \
-    web.wsgi:application
+    -k uvicorn.workers.UvicornWorker \
+    web.asgi:application

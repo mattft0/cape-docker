@@ -175,10 +175,11 @@ if [ ! -f "$COMMUNITY_FLAG" ]; then
     log "Installing community signatures (MITRE ATT&CK, YARA)..."
     cd "${CAPE_ROOT}"
     # Use system python3 as dependencies are installed globally in the container
-    sudo -u "${CAPE_USER}" python3 utils/community.py -waf --mitre 2>/dev/null && \
-    sudo -u "${CAPE_USER}" python3 utils/community.py -cr 2>/dev/null && \
+    sudo -u "${CAPE_USER}" python3 utils/community.py -waf --mitre 2>&1 && \
+    sudo -u "${CAPE_USER}" python3 utils/community.py -cr 2>&1 && \
     touch "$COMMUNITY_FLAG" && \
-    log "Community signatures installed: OK"
+    SIGS_COUNT=$(find modules/signatures/ -name '*.py' | wc -l) && \
+    log "Community signatures installed: OK (${SIGS_COUNT} signature files)"
 else
     log "Community signatures already installed: OK"
 fi
